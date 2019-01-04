@@ -24,7 +24,8 @@ public class AnalysisExcelUtil{
 	 * 2.空行会被无视
 	 * 3.每行列数不固定所以记住有可能下标超出
 	 * 4.值不会出现null的现象空值会处理成为空字符串
-	 * @param inputStream
+	 * @param inputStream 输入流 会自动解析xls 或者 xlsx
+	 * @param sheetName 要解析的sheet名称
 	 * @return 返回表格 二维数组
 	 * @throws EncryptedDocumentException
 	 * @throws InvalidFormatException
@@ -35,6 +36,30 @@ public class AnalysisExcelUtil{
 		workBook=WorkbookFactory.create(inputStream);
 		Sheet sheet = workBook.getSheet(sheetName);
 		return analysisSheet(sheet);
+	}
+	/**
+	 * 解析输入流的excel成为一堆二维数组
+	 * 注：
+	 * 1.内容前后的包括回车空白字符会被去除
+	 * 2.空行会被无视
+	 * 3.每行列数不固定所以记住有可能下标超出
+	 * 4.值不会出现null的现象空值会处理成为空字符串
+	 * @param inputStream excel 流输入， 可以解析 xls 和xlsx
+	 * @return 返回以sheetName作为key的表格的有序集合
+	 * @throws EncryptedDocumentException
+	 * @throws InvalidFormatException
+	 * @throws IOException
+	 */
+	public static TreeMap<String,String[][]> analysisExcel(InputStream inputStream) throws IOException, InvalidFormatException {
+		TreeMap<String,String[][]> treeMap=new TreeMap<>();
+		Workbook workBook;
+		workBook=WorkbookFactory.create(inputStream);
+		int sheetNum=workBook.getNumberOfSheets();
+		for (int i=0;i<sheetNum;i++){
+			Sheet sheet = workBook.getSheetAt(i);
+			treeMap.put(sheet.getSheetName(),analysisSheet(sheet));
+		}
+		return treeMap;
 	}
 	private static String[][] analysisSheet(Sheet sheet){
 		List<String[]> table=new LinkedList<String[]>();
@@ -76,8 +101,25 @@ public class AnalysisExcelUtil{
 		}
 		return null;
 	}
-	
+	/**
+	 *  根据 类上面的注解 解析excel， 其中sheetName为类 ExcelHead 注解配置，表头为 字段ExcelHead注解配置
+	 *  默认第0行为表头
+	 * @param inputStream 需要解析的excel
+	 * @param targetClass 配置类
+	 * @return targetClass类型的List
+	 */
 	public static <T> List<T> analysisExcel(InputStream inputStream,Class<T> targetClass){
+		return analysisExcel(inputStream,targetClass,0);
+	}
+	
+	/**
+	 *  根据 类上面的注解 解析excel， 其中sheetName为类 ExcelHead 注解配置，表头为 字段ExcelHead注解配置
+	 * @param inputStream 需要解析的excel
+	 * @param targetClass 配置类
+	 * @param headIndex 表头在第几行，  从0 开始数
+	 * @return targetClass类型的List
+	 */
+	public static <T> List<T> analysisExcel(InputStream inputStream,Class<T> targetClass,int headIndex){
 	    List<T> resultList=new ArrayList<>();
 		ExcelHead excelhead=targetClass.getAnnotation(ExcelHead.class);
 		String title ="sheet1";
@@ -90,11 +132,11 @@ public class AnalysisExcelUtil{
 		} catch (Exception e) {
 			throw new IllegalStateException("Excel 解析失败",e);
 		}
-		if (table.length<=1){
+		if (table.length<headIndex+1){
 			return resultList;
 		}
 		Map<String,Integer> headerToIndex=new HashMap<>(3);
-		String[] header=table[0];
+		String[] header=table[headIndex];
 		for (int i=0;i<header.length;i++){
 			headerToIndex.put(header[i],i);
 		}
@@ -116,7 +158,7 @@ public class AnalysisExcelUtil{
 			}
 			cls=cls.getSuperclass();
 		}
-		for (int rowIndex=1;rowIndex<table.length;rowIndex++){
+		for (int rowIndex=headIndex+1;rowIndex<table.length;rowIndex++){
 			String[] row=table[rowIndex];
 			T target;
 			try {

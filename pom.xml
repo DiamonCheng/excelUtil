@@ -16,9 +16,19 @@
                 <configuration>
                     <target>1.7</target>
                     <source>1.7</source>
+                    <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>/src/test/resources</directory>
+                <includes>
+                    <include>*.xls</include>
+                    <include>*.xlsx</include>
+                </includes>
+            </resource>
+        </resources>
     </build>
 
     <dependencies>
